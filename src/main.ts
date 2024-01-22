@@ -90,7 +90,9 @@ export const z_server = () => {
       const req_check = await method.signature.req.safeParseAsync(req);
       if (!req_check.success) {
         return new Response(
-          JSON.stringify(z_error("invalid_request", req_check.error.message)),
+          JSON.stringify(
+            z_error("invalid_request", JSON.parse(req_check.error.message))
+          ),
           error_params
         );
       }
@@ -102,7 +104,7 @@ export const z_server = () => {
         if (!res_check.success) {
           return new Response(
             JSON.stringify(
-              z_error("invalid_response", res_check.error.message)
+              z_error("invalid_response", JSON.parse(res_check.error.message))
             ),
             error_params
           );
