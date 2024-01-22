@@ -54,9 +54,9 @@ export const z_client: (
   };
 };
 
-export function z_error(code: string, message?: unknown) {
+export function z_error(error: string, message?: unknown) {
   return {
-    code,
+    error,
     message
   };
 }
