@@ -100,7 +100,6 @@ export const z_server = () => {
       }
 
       try {
-        console.log(request.headers);
         const res = await method.fun(req, request.headers);
 
         const res_check = await method.signature.req.safeParseAsync(req);
