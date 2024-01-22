@@ -64,7 +64,7 @@ export const z_server = () => {
   return {
     on: <Req, Res>(
       signature: SignatureWithName<Req, Res>,
-      fun: (req: Req) => Res
+      fun: (req: Req) => Promise<Res>
     ) => {
       (methods as any)[signature.name] = {
         signature,
