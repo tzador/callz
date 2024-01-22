@@ -47,7 +47,7 @@ export const z_client: (
       body: JSON.stringify(req)
     });
     const res = await response.json();
-    if (res.error) {
+    if (res?.error) {
       throw res.error;
     }
     return res;
