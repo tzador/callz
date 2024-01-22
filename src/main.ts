@@ -31,16 +31,18 @@ export const z_method: <Req, Res>(
 };
 
 export const z_client: (
-  url: string
+  url: string,
+  make_headers?: () => Promise<Record<string, string> | undefined>
 ) => <Req, Res>(
   signature: SignatureWithName<Req, Res>,
   req: Req
-) => Promise<Res> = (url) => {
+) => Promise<Res> = (url, make_headers) => {
   return async (signature, req) => {
     const response = await fetch(url + "/" + signature.name, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        ...(make_headers ? await make_headers() : {})
       },
       body: JSON.stringify(req)
     });
@@ -64,7 +66,7 @@ export const z_server = () => {
   return {
     on: <Req, Res>(
       signature: SignatureWithName<Req, Res>,
-      fun: (req: Req) => Promise<Res>
+      fun: (req: Req, headers: Headers) => Promise<Res>
     ) => {
       (methods as any)[signature.name] = {
         signature,
@@ -98,7 +100,8 @@ export const z_server = () => {
       }
 
       try {
-        const res = await method.fun(req);
+        console.log(request.headers);
+        const res = await method.fun(req, request.headers);
 
         const res_check = await method.signature.req.safeParseAsync(req);
         if (!res_check.success) {
