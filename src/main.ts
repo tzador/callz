@@ -12,6 +12,7 @@ type SignatureWithName<Req, Res> = Signature<Req, Res> & {
 export function z_service<T extends object>(spec: T) {
   return new Proxy(spec, {
     get: (target, prop) => {
+      // deno-lint-ignore no-explicit-any
       const signature = (target as any)[prop];
       if (!signature) {
         throw new Error(`Method ${prop.toString()} not found`);
@@ -61,13 +62,14 @@ export function z_error(error: string, message?: unknown) {
   };
 }
 
-export const z_server = () => {
+export const z_server = (options?: { log?: boolean }) => {
   const methods = {};
   return {
     on: <Req, Res>(
       signature: SignatureWithName<Req, Res>,
       fun: (req: Req, headers: Headers) => Promise<Res>
     ) => {
+      // deno-lint-ignore no-explicit-any
       (methods as any)[signature.name] = {
         signature,
         fun
@@ -75,12 +77,11 @@ export const z_server = () => {
     },
     handle: async (request: Request) => {
       const req = await request.json();
-      const method = (methods as any)[request.url.split("/").pop()!];
 
-      const error_params = {
-        status: 418,
-        headers: { "Content-Type": "application/json" }
-      };
+      options?.log && console.log("callz request >>", req);
+
+      // deno-lint-ignore no-explicit-any
+      const method = (methods as any)[request.url.split("/").pop()!];
 
       if (!method) {
         return new Response(
@@ -102,6 +103,8 @@ export const z_server = () => {
       try {
         const res = await method.fun(req, request.headers);
 
+        options?.log && console.log("callz response <<", res);
+
         const res_check = await method.signature.req.safeParseAsync(req);
         if (!res_check.success) {
           return new Response(
@@ -115,7 +118,9 @@ export const z_server = () => {
         return new Response(JSON.stringify(res), {
           headers: { "Content-Type": "application/json" }
         });
+        // deno-lint-ignore no-explicit-any
       } catch (error: any) {
+        options?.log && console.error(error);
         return new Response(
           JSON.stringify(
             z_error(error.code ?? "internal_server_error", error.message)
@@ -125,4 +130,9 @@ export const z_server = () => {
       }
     }
   };
+};
+
+const error_params = {
+  status: 418,
+  headers: { "Content-Type": "application/json" }
 };
