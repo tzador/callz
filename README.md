@@ -1,3 +1,3 @@
-# human-status
+# callz
 
-Human friendly http status codes.
+Easy and type safe remote procedure calls using Zod.
