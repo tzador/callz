@@ -1,6 +1,6 @@
 {
   "name": "callz",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "Easy and safe remote procedure calls validated with Zod.",
   "main": "dist/main.js",
   "type": "module",
@@ -8,14 +8,15 @@
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "pnpm run build",
-    "test": "vite-node test/test.ts"
+    "test": "vitest test"
   },
   "license": "MIT",
   "devDependencies": {
     "@hono/node-server": "^1.4.1",
     "hono": "^3.12.6",
     "typescript": "^5.3.3",
-    "vite-node": "^1.2.1"
+    "vite-node": "^1.2.1",
+    "vitest": "^1.2.1"
   },
   "types": "dist/main.d.ts",
   "dependencies": {

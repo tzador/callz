@@ -1,138 +1,117 @@
 import { z } from "zod";
 
-type Signature<Req, Res> = {
+export class ZError {
+  constructor(public code: string, public message?: unknown) {}
+}
+
+type Method<Req, Res> = {
   req: z.ZodType<Req>;
   res: z.ZodType<Res>;
 };
 
-type SignatureWithName<Req, Res> = Signature<Req, Res> & {
+type MethodWithName<Req, Res> = Method<Req, Res> & {
   name: string;
 };
 
-export function z_service<T extends object>(spec: T) {
+export function z_service<
+  T extends Record<string, MethodWithName<unknown, unknown>>
+>(spec: T) {
   return new Proxy(spec, {
     get: (target, prop) => {
+      const name = prop.toString();
+
       // deno-lint-ignore no-explicit-any
-      const signature = (target as any)[prop];
+      const signature = (target as any)[name];
       if (!signature) {
-        throw new Error(`Method ${prop.toString()} not found`);
+        throw new Error(`Method ${name} not found`);
       }
       return {
         ...signature,
-        name: prop
+        name
       };
     }
   });
 }
 
 export const z_method: <Req, Res>(
-  signature: Signature<Req, Res>
-) => SignatureWithName<Req, Res> = (signature) => {
-  return { ...signature, name: "" };
+  method: Method<Req, Res>
+) => MethodWithName<Req, Res> = (method) => {
+  return { ...method, name: "" };
 };
 
 export const z_client: (
-  url: string,
-  make_headers?: () => Promise<Record<string, string> | undefined>
-) => <Req, Res>(
-  signature: SignatureWithName<Req, Res>,
-  req: Req
-) => Promise<Res> = (url, make_headers) => {
-  return async (signature, req) => {
-    const response = await fetch(url + "/" + signature.name, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(make_headers ? await make_headers() : {})
-      },
-      body: JSON.stringify(req)
-    });
-    const res = await response.json();
-    if (res?.error) {
-      throw res.error;
-    }
-    return res;
+  fetcher: (name: string, req: unknown) => Promise<unknown>
+) => <Req, Res>(method: MethodWithName<Req, Res>, req: Req) => Promise<Res> =
+  (fetcher) => async (method, req) => {
+    const res = await fetcher(method.name, req);
+    // deno-lint-ignore no-explicit-any
+    return res as any;
   };
-};
 
-export function z_error(error: string, message?: unknown) {
-  return {
-    error,
-    message
-  };
-}
-
-export const z_server = (options?: { log?: boolean }) => {
-  const methods = {};
-  return {
-    on: <Req, Res>(
-      signature: SignatureWithName<Req, Res>,
-      fun: (req: Req, headers: Headers) => Promise<Res>
-    ) => {
+export const z_server = () => {
+  const handlers: {
+    [name: string]: {
+      method: MethodWithName<unknown, unknown>;
       // deno-lint-ignore no-explicit-any
-      (methods as any)[signature.name] = {
-        signature,
+      fun: (req: any, ctx?: unknown) => any;
+    };
+  } = {};
+  return {
+    handle: <Req, Res>(
+      method: MethodWithName<Req, Res>,
+      fun: (req: Req, ctx?: unknown) => Promise<Res> | Res
+    ) => {
+      if (handlers[method.name]) {
+        throw new ZError(
+          "method_already_exists",
+          `Method "${method.name}" already exists`
+        );
+      }
+
+      handlers[method.name] = {
+        method,
         fun
       };
     },
-    handle: async (request: Request) => {
-      const req = await request.json();
 
-      options?.log && console.log("callz request >>", req);
-
-      // deno-lint-ignore no-explicit-any
-      const method = (methods as any)[request.url.split("/").pop()!];
-
-      if (!method) {
-        return new Response(
-          JSON.stringify(z_error("method_not_implemented")),
-          error_params
-        );
-      }
-
-      const req_check = await method.signature.req.safeParseAsync(req);
-      if (!req_check.success) {
-        return new Response(
-          JSON.stringify(
-            z_error("invalid_request", JSON.parse(req_check.error.message))
-          ),
-          error_params
-        );
-      }
-
+    fetcher: async (
+      name: string,
+      req: unknown,
+      ctx?: unknown
+    ): Promise<unknown> => {
       try {
-        const res = await method.fun(req, request.headers);
+        const handler = handlers[name];
+        if (!handler) throw new ZError("method_not_found");
 
-        options?.log && console.log("callz response <<", res);
-
-        const res_check = await method.signature.req.safeParseAsync(req);
-        if (!res_check.success) {
-          return new Response(
-            JSON.stringify(
-              z_error("invalid_response", JSON.parse(res_check.error.message))
-            ),
-            error_params
+        const req_check = await handler.method.req.safeParseAsync(req);
+        if (!req_check.success) {
+          throw new ZError(
+            "request_validation_failed",
+            JSON.parse(req_check.error.message)
           );
         }
 
-        return new Response(JSON.stringify(res), {
-          headers: { "Content-Type": "application/json" }
-        });
-        // deno-lint-ignore no-explicit-any
-      } catch (error: any) {
-        options?.log && console.error(error);
-        return new Response(
-          JSON.stringify(
-            z_error(error.code ?? "internal_server_error", error.message)
-          ),
-          error_params
-        );
+        const res = await handler.fun(req, ctx);
+
+        const res_check = await handler.method.res.safeParseAsync(res);
+        if (!res_check.success) {
+          throw new ZError(
+            "response_validation_failed",
+            JSON.parse(res_check.error.message)
+          );
+        }
+
+        return res;
+      } catch (error) {
+        if (error instanceof ZError) {
+          throw error;
+        }
+        if (error instanceof Error) {
+          throw new ZError("internal_server_error", error.message);
+        }
+        console.error(error);
+        throw new ZError("internal_server_error");
       }
     }
   };
-};
-
-const error_params = {
-  status: 418,
-  headers: { "Content-Type": "application/json" }
 };
