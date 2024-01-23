@@ -1,8 +1,8 @@
 {
   "name": "callz",
-  "version": "0.0.13",
-  "description": "Easy and safe remote procedure calls validated with Zod.",
-  "main": "dist/main.js",
+  "version": "0.1.0",
+  "description": "Easy and safe remote procedure callz validated with Zod.",
+  "main": "dist/zcall.js",
   "type": "module",
   "author": "Tim Zadorozhny <tzador@gmail.com>",
   "scripts": {
