@@ -1,12 +1,12 @@
 {
   "name": "callz",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Easy and safe remote procedure callz validated with Zod.",
-  "main": "dist/zcall.js",
+  "main": "dist/callz.js",
   "type": "module",
   "author": "Tim Zadorozhny <tzador@gmail.com>",
   "scripts": {
-    "build": "tsc",
+    "build": "rm -rf dist && tsc",
     "prepublishOnly": "pnpm run build",
     "test": "vitest test"
   },
@@ -18,7 +18,7 @@
     "vite-node": "^1.2.1",
     "vitest": "^1.2.1"
   },
-  "types": "dist/main.d.ts",
+  "types": "dist/callz.d.ts",
   "dependencies": {
     "zod": "^3.22.4"
   }
