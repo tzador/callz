@@ -1,15 +1,15 @@
 import { z } from "zod";
 
-export class ZError {
+export class CallzError {
   constructor(public code: string, public message?: unknown) {}
 }
 
-export type ZMethod = {
+export type CallzMethod = {
   req: z.ZodType;
   res: z.ZodType;
 };
 
-export const z_client: <S extends { [name in keyof S]: ZMethod }>(
+export const callzClient: <S extends { [name in keyof S]: CallzMethod }>(
   _service: S,
   fetcher: (name: keyof S, args: unknown) => Promise<unknown>
 ) => {
@@ -31,7 +31,33 @@ export const z_client: <S extends { [name in keyof S]: ZMethod }>(
   ) as any;
 };
 
-export const z_server: <S extends { [name in keyof S]: ZMethod }, C>(
+export const callzFetcher: (
+  url: string,
+  fetch_?: typeof fetch
+) => <S extends { [name in keyof S]: CallzMethod }>(
+  name: keyof S,
+  req: unknown
+) => Promise<unknown> = (url, fetch_) => async (name, req) => {
+  fetch_ = fetch_ ?? fetch;
+  const response = await fetch_(`${url}/${name.toString()}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(req)
+  });
+  if (response.ok) {
+    return await response.json();
+  } else {
+    if (response.status === 418) {
+      const body = await response.json();
+      throw new CallzError(body.code, body.message);
+    }
+  }
+  throw new CallzError("client_error", response.statusText);
+};
+
+export const callzServer: <S extends { [name in keyof S]: CallzMethod }, C>(
   service: S,
   methods: {
     [name in keyof S]: (
@@ -46,11 +72,11 @@ export const z_server: <S extends { [name in keyof S]: ZMethod }, C>(
   return (ctx) => async (name, req) => {
     try {
       const method = methods[name];
-      if (!method) throw new ZError("method_not_found");
+      if (!method) throw new CallzError("method_not_found");
 
       const req_check = await service[name].req.safeParseAsync(req);
       if (!req_check.success) {
-        throw new ZError(
+        throw new CallzError(
           "request_validation_failed",
           JSON.parse(req_check.error.message)
         );
@@ -60,7 +86,7 @@ export const z_server: <S extends { [name in keyof S]: ZMethod }, C>(
 
       const res_check = await service[name].res.safeParseAsync(res);
       if (!res_check.success) {
-        throw new ZError(
+        throw new CallzError(
           "response_validation_failed",
           JSON.parse(res_check.error.message)
         );
@@ -68,14 +94,14 @@ export const z_server: <S extends { [name in keyof S]: ZMethod }, C>(
 
       return res;
     } catch (error) {
-      if (error instanceof ZError) {
+      if (error instanceof CallzError) {
         throw error;
       }
       if (error instanceof Error) {
-        throw new ZError("internal_server_error", error.message);
+        throw new CallzError("internal_server_error", error.message);
       }
       console.error(error);
-      throw new ZError("internal_server_error");
+      throw new CallzError("internal_server_error");
     }
   };
 };

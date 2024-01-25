@@ -1,6 +1,11 @@
 import { expect, test } from "vitest";
 import { z } from "zod";
-import { ZError, z_client, z_server } from "../src/zcall.ts";
+import {
+  CallzError,
+  callzClient,
+  callzServer,
+  callzFetcher
+} from "../src/callz.ts";
 
 const service = {
   add: {
@@ -23,7 +28,7 @@ const service = {
   }
 };
 
-const server = z_server(service, {
+const server = callzServer(service, {
   add: (req) => {
     return req.a + req.b;
   },
@@ -31,11 +36,11 @@ const server = z_server(service, {
     return { a: req.b, b: req.a };
   },
   fail: () => {
-    throw new ZError("test_error");
+    throw new CallzError("test_error");
   }
 });
 
-const client = z_client(service, server(null));
+const client = callzClient(service, server(null));
 
 test("add method", async () => {
   const res = await client.add({ a: 2, b: 2 });
@@ -53,7 +58,37 @@ test("fail method", async () => {
     await client.fail(undefined);
     expect(false).toBe(true);
   } catch (error) {
-    expect(error).toBeInstanceOf(ZError);
+    expect(error).toBeInstanceOf(CallzError);
     expect(error.code).toBe("test_error");
   }
+});
+
+import { Hono, type Context } from "hono";
+import { serve } from "@hono/node-server";
+
+test("hono web server", async () => {
+  const app = new Hono();
+
+  app.post("/callz/:method", async (c: Context) => {
+    return c.json(
+      // deno-lint-ignore no-explicit-any
+      await server(null)(c.req.param("method") as any, await c.req.json())
+    );
+  });
+
+  const s = serve({ fetch: app.fetch, port: 5566 });
+
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
+  const client = callzClient(
+    service,
+    callzFetcher("http://localhost:5566/callz")
+  );
+
+  const res = await client.add({ a: 2, b: 2 });
+  console.log(res);
+
+  await new Promise<Error | undefined>((resolve) => {
+    s.close(resolve);
+  });
 });
