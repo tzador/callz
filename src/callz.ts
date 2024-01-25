@@ -57,7 +57,7 @@ export const callzFetcher: (
   throw new CallzError("client_error", response.statusText);
 };
 
-export const callzServer: <S extends { [name in keyof S]: CallzMethod }, C>(
+export const callzServer: <C, S extends { [name in keyof S]: CallzMethod }>(
   service: S,
   methods: {
     [name in keyof S]: (
