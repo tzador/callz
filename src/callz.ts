@@ -9,7 +9,13 @@ export type CallzMethod = {
   res: z.ZodType;
 };
 
-export const callzClient: <S extends { [name in keyof S]: CallzMethod }>(
+export type CallzService<S> = { [name in keyof S]: CallzMethod };
+
+export const callzService: <S extends CallzService<S>>(service: S) => S = (
+  service
+) => service;
+
+export const callzClient: <S extends CallzService<S>>(
   _service: S,
   fetcher: (name: keyof S, args: unknown) => Promise<unknown>
 ) => {
@@ -34,7 +40,7 @@ export const callzClient: <S extends { [name in keyof S]: CallzMethod }>(
 export const callzFetcher: (
   url: string,
   fetch_?: typeof fetch
-) => <S extends { [name in keyof S]: CallzMethod }>(
+) => <S extends CallzService<S>>(
   name: keyof S,
   req: unknown
 ) => Promise<unknown> = (url, fetch_) => async (name, req) => {
@@ -57,7 +63,7 @@ export const callzFetcher: (
   throw new CallzError("client_error", response.statusText);
 };
 
-export const callzServer: <C, S extends { [name in keyof S]: CallzMethod }>(
+export const callzServer: <C, S extends CallzService<S>>(
   service: S,
   methods: {
     [name in keyof S]: (
