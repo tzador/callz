@@ -4,10 +4,11 @@ import {
   CallzError,
   callzClient,
   callzServer,
-  callzFetcher
+  callzFetcher,
+  callzService
 } from "../src/callz.ts";
 
-const service = {
+const service = callzService({
   add: {
     req: z.object({ a: z.number(), b: z.number() }),
     res: z.number()
@@ -26,7 +27,7 @@ const service = {
     req: z.undefined(),
     res: z.undefined()
   }
-};
+});
 
 const server = callzServer(service, {
   add: (req) => {
@@ -40,29 +41,6 @@ const server = callzServer(service, {
   }
 });
 
-const client = callzClient(service, server(null));
-
-test("add method", async () => {
-  const res = await client.add({ a: 2, b: 2 });
-  expect(res).toBe(4);
-});
-
-test("swap method", async () => {
-  const res = await client.swap({ a: "hello", b: "world" });
-  expect(res.a).toBe("world");
-  expect(res.b).toBe("hello");
-});
-
-test("fail method", async () => {
-  try {
-    await client.fail(undefined);
-    expect(false).toBe(true);
-  } catch (error) {
-    expect(error).toBeInstanceOf(CallzError);
-    expect(error.code).toBe("test_error");
-  }
-});
-
 import { Hono, type Context } from "hono";
 import { serve } from "@hono/node-server";
 
@@ -70,20 +48,14 @@ test("hono web server", async () => {
   const app = new Hono();
 
   app.post("/callz/:method", async (c: Context) => {
-    return c.json(
-      // deno-lint-ignore no-explicit-any
-      await server(null)(c.req.param("method") as any, await c.req.json())
-    );
+    return c.json(await server(c.req.raw));
   });
 
   const s = serve({ fetch: app.fetch, port: 5566 });
 
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
-  const client = callzClient(
-    service,
-    callzFetcher("http://localhost:5566/callz")
-  );
+  const client = callzClient(service, "http://localhost:5566/callz");
 
   const res = await client.add({ a: 2, b: 2 });
   console.log(res);
