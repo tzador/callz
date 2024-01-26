@@ -86,15 +86,17 @@ export const callzServer: <S extends CallzService<S>>(
         );
       }
 
-      return res;
+      return Response.json(res);
     } catch (error) {
       if (error instanceof CallzError) {
-        throw error;
+        return Response.json(error, { status: 418 });
       }
       if (error instanceof Error) {
-        throw new CallzError("internal_server_error", error.message);
+        return Response.json(
+          { error: "internal_server_error", message: error.message },
+          { status: 418 }
+        );
       }
-      console.error(error);
-      throw new CallzError("internal_server_error");
+      return Response.json({ error: "internal_server_error" }, { status: 418 });
     }
   };
