@@ -17,19 +17,33 @@ export const callzService: <S extends CallzService<S>>(service: S) => S = (
 
 export const callzClient: <S extends CallzService<S>>(
   _service: S,
-  fetcher: (name: keyof S, args: unknown) => Promise<unknown>
+  url: string
 ) => {
   [name in keyof S]: (
     req: z.infer<S[name]["req"]>
   ) => Promise<z.infer<S[name]["res"]>>;
-} = (_service, fetcher) => {
+} = (_service, url) => {
   return new Proxy(
     {},
     {
       get: (_target, prop) => {
         return async (req: unknown) => {
-          // deno-lint-ignore no-explicit-any
-          return await fetcher(prop.toString() as any, req);
+          const response = await fetch(`${url}/${prop.toString()}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(req)
+          });
+          if (response.ok) {
+            return await response.json();
+          } else {
+            if (response.status === 418) {
+              const body = await response.json();
+              throw new CallzError(body.code, body.message);
+            }
+          }
+          throw new CallzError("client_error");
         };
       }
     }
@@ -63,19 +77,19 @@ export const callzFetcher: (
   throw new CallzError("client_error", response.statusText);
 };
 
-export const callzServer: <C, S extends CallzService<S>>(
+export const callzServer: <S extends CallzService<S>>(
   service: S,
   methods: {
     [name in keyof S]: (
       req: z.infer<S[name]["req"]>,
-      ctx: C
+      headers: Headers
     ) => Promise<z.infer<S[name]["res"]>> | z.infer<S[name]["res"]>;
   }
-) => (ctx: C) => (name: keyof S, req: unknown) => Promise<unknown> = (
-  service,
-  methods
-) => {
-  return (ctx) => async (name, req) => {
+) => (request: Request) => Promise<Response> =
+  (service, methods) => async (request) => {
+    const req = await request.json();
+    const name = request.url.split("/").pop() as keyof typeof service;
+
     try {
       const method = methods[name];
       if (!method) throw new CallzError("method_not_found");
@@ -88,7 +102,7 @@ export const callzServer: <C, S extends CallzService<S>>(
         );
       }
 
-      const res = await method(req, ctx);
+      const res = await method(req, request.headers);
 
       const res_check = await service[name].res.safeParseAsync(res);
       if (!res_check.success) {
@@ -110,4 +124,3 @@ export const callzServer: <C, S extends CallzService<S>>(
       throw new CallzError("internal_server_error");
     }
   };
-};
