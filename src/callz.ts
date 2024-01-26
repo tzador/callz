@@ -51,32 +51,6 @@ export const callzClient: <S extends CallzService<S>>(
   ) as any;
 };
 
-export const callzFetcher: (
-  url: string,
-  fetch_?: typeof fetch
-) => <S extends CallzService<S>>(
-  name: keyof S,
-  req: unknown
-) => Promise<unknown> = (url, fetch_) => async (name, req) => {
-  fetch_ = fetch_ ?? fetch;
-  const response = await fetch_(`${url}/${name.toString()}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(req)
-  });
-  if (response.ok) {
-    return await response.json();
-  } else {
-    if (response.status === 418) {
-      const body = await response.json();
-      throw new CallzError(body.code, body.message);
-    }
-  }
-  throw new CallzError("client_error", response.statusText);
-};
-
 export const callzServer: <S extends CallzService<S>>(
   service: S,
   methods: {

@@ -4,7 +4,6 @@ import {
   CallzError,
   callzClient,
   callzServer,
-  callzFetcher,
   callzService
 } from "../src/callz.ts";
 
@@ -58,7 +57,7 @@ test("hono web server", async () => {
   const client = callzClient(service, "http://localhost:5566/callz");
 
   const res = await client.add({ a: 2, b: 2 });
-  console.log(res);
+  expect(res).toBe(4);
 
   await new Promise<Error | undefined>((resolve) => {
     s.close(resolve);
