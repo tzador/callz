@@ -1,102 +1,82 @@
-import { z } from "zod";
+import * as status from "human-status";
+import { ZodError } from "zod";
 
-export class CallzError {
-  constructor(public code: string, public message?: unknown) {}
+class CallzError extends Error {
+  constructor(public status: number, public message: any) {
+    super(message);
+    this.status = status;
+  }
 }
 
-export type CallzMethod = {
-  req: z.ZodType;
-  res: z.ZodType;
-};
-
-export type CallzService<S> = { [name in keyof S]: CallzMethod };
-
-export const callzService: <S extends CallzService<S>>(service: S) => S = (
-  service
-) => service;
-
-export const callzClient: <S extends CallzService<S>>(
-  _service: S,
-  url: string
-) => {
-  [name in keyof S]: (
-    req: z.infer<S[name]["req"]>
-  ) => Promise<z.infer<S[name]["res"]>>;
-} = (_service, url) => {
-  return new Proxy(
-    {},
-    {
-      get: (_target, prop) => {
-        return async (req: unknown) => {
-          const response = await fetch(`${url}/${prop.toString()}`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(req)
-          });
-          if (response.ok) {
-            return await response.json();
-          } else {
-            if (response.status === 418) {
-              const body = await response.json();
-              throw new CallzError(body.code, body.message);
-            }
-          }
-          throw new CallzError("client_error");
-        };
-      }
+export const callzHandler: <S extends Record<string, (...args: any[]) => any>>(
+  service: S
+) => (request: Request) => Promise<Response> = (service) => async (request) => {
+  try {
+    if (request.method !== "POST") {
+      throw new CallzError(
+        status.METHOD_NOT_ALLOWED_405,
+        "Only POST is supported"
+      );
     }
-    // deno-lint-ignore no-explicit-any
-  ) as any;
-};
 
-export const callzServer: <S extends CallzService<S>>(
-  service: S,
-  methods: {
-    [name in keyof S]: (
-      req: z.infer<S[name]["req"]>,
-      headers: Headers
-    ) => Promise<z.infer<S[name]["res"]>> | z.infer<S[name]["res"]>;
-  }
-) => (request: Request) => Promise<Response> =
-  (service, methods) => async (request) => {
-    const req = await request.json();
-    const name = request.url.split("/").pop() as keyof typeof service;
+    const method = request.url.split(/\/+/g).pop();
+
+    if (!method) {
+      throw new CallzError(status.BAD_REQUEST_400, "Method name not provided");
+    }
+
+    const fn = service[method];
+
+    if (!fn) {
+      throw new CallzError(status.NOT_FOUND_404, "Method not found");
+    }
+
+    let args: any[] = [];
+    try {
+      args = await request.json();
+    } catch (error: any) {
+      throw new CallzError(status.BAD_REQUEST_400, error.message);
+    }
 
     try {
-      const method = methods[name];
-      if (!method) throw new CallzError("method_not_found");
-
-      const req_check = await service[name].req.safeParseAsync(req);
-      if (!req_check.success) {
-        throw new CallzError(
-          "request_validation_failed",
-          JSON.parse(req_check.error.message)
-        );
-      }
-
-      const res = await method(req, request.headers);
-
-      const res_check = await service[name].res.safeParseAsync(res);
-      if (!res_check.success) {
-        throw new CallzError(
-          "response_validation_failed",
-          JSON.parse(res_check.error.message)
-        );
-      }
-
+      const res = await fn(...args);
       return Response.json(res);
-    } catch (error) {
-      if (error instanceof CallzError) {
-        return Response.json(error, { status: 418 });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        throw new CallzError(status.BAD_REQUEST_400, error.issues);
       }
-      if (error instanceof Error) {
-        return Response.json(
-          { error: "internal_server_error", message: error.message },
-          { status: 418 }
-        );
-      }
-      return Response.json({ error: "internal_server_error" }, { status: 418 });
+      console.log(error);
+      throw new CallzError(status.INTERNAL_SERVER_ERROR_500, error.message);
     }
-  };
+  } catch (error: any) {
+    return Response.json(
+      { error: error.message },
+      { status: error.status ?? status.INTERNAL_SERVER_ERROR_500 }
+    );
+  }
+};
+
+export const callzClient: <S extends Record<string, (...args: any[]) => any>>(
+  url: string
+) => S = (url) => {
+  return new Proxy({} as any, {
+    get(_, method) {
+      return async (...args: any[]) => {
+        const response = await fetch(`${url}/${method.toString()}`, {
+          method: "POST",
+          body: JSON.stringify(args),
+          headers: { "Content-Type": "application/json" }
+        });
+        if (response.status < 300) {
+          return await response.json();
+        }
+        try {
+          const json = await response.json();
+          throw new CallzError(response.status, json.error?.message);
+        } catch {
+          throw new CallzError(response.status, response.statusText);
+        }
+      };
+    }
+  });
+};

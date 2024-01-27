@@ -1,6 +1,6 @@
 {
   "name": "callz",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Easy and safe remote procedure callz validated with Zod.",
   "main": "dist/callz.js",
   "type": "module",
@@ -20,6 +20,7 @@
   },
   "types": "dist/callz.d.ts",
   "dependencies": {
+    "human-status": "^2.0.1",
     "zod": "^3.22.4"
   }
 }
