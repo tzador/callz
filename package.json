@@ -1,6 +1,6 @@
 {
   "name": "callz",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Easy and safe remote procedure callz validated with Zod.",
   "main": "dist/callz.js",
   "type": "module",
