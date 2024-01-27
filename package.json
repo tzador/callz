@@ -1,6 +1,6 @@
 {
   "name": "callz",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Easy and safe remote procedure callz validated with Zod.",
   "main": "dist/callz.js",
   "type": "module",
@@ -8,7 +8,7 @@
   "scripts": {
     "build": "rm -rf dist && tsc",
     "prepublishOnly": "pnpm run build",
-    "test": "vitest test"
+    "test": "rm -rf dist && deno run -A --unstable-broadcast-channel --watch mod.test.ts"
   },
   "license": "MIT",
   "devDependencies": {
