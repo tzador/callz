@@ -132,7 +132,7 @@ export const zPushClient: <Push extends Record<string, z.ZodType>>(
     return {
       close: () => {
         event_source.close();
-        callbacks = [];
+        callbacks.length = 0;
       },
       handle: new Proxy({} as any, {
         get(_, method) {
