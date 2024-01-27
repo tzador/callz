@@ -1,5 +1,28 @@
 {
   "version": "3",
+  "packages": {
+    "specifiers": {
+      "npm:superjson@1.13.3": "npm:superjson@1.13.3"
+    },
+    "npm": {
+      "copy-anything@3.0.5": {
+        "integrity": "sha512-yCEafptTtb4bk7GLEQoM8KVJpxAfdBJYaXyzQEgQQQgYrZiDp8SJmGKlYza6CYjEDNstAdNdKA3UuoULlEbS6w==",
+        "dependencies": {
+          "is-what": "is-what@4.1.16"
+        }
+      },
+      "is-what@4.1.16": {
+        "integrity": "sha512-ZhMwEosbFJkA0YhFnNDgTM4ZxDRsS6HqTo7qsZM08fehyRYIYa0yHu5R6mgo1n/8MgaPBXiPimPD77baVFYg+A==",
+        "dependencies": {}
+      },
+      "superjson@1.13.3": {
+        "integrity": "sha512-mJiVjfd2vokfDxsQPOwJ/PtanO87LhpYY88ubI5dUB1Ab58Txbyje3+jpm+/83R/fevaq/107NNhtYBLuoTrFg==",
+        "dependencies": {
+          "copy-anything": "copy-anything@3.0.5"
+        }
+      }
+    }
+  },
   "redirects": {
     "https://deno.land/x/emit/mod.ts": "https://deno.land/x/emit@0.34.0/mod.ts",
     "https://deno.land/x/zod/mod.ts": "https://deno.land/x/zod@v3.22.4/mod.ts"
@@ -72,13 +95,29 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
-        "npm:@hono/node-server@^1.4.1",
-        "npm:hono@^3.12.6",
-        "npm:human-status@^2.0.1",
-        "npm:typescript@^5.3.3",
-        "npm:vite-node@^1.2.1",
-        "npm:vitest@^1.2.1",
-        "npm:zod@^3.22.4"
+        "npm:@types/mocha@^10.0.1",
+        "npm:@types/node-fetch@^2.6.6",
+        "npm:@types/node@16.x",
+        "npm:@types/react-dom@^18.2.10",
+        "npm:@types/react-transition-group@^4.4.7",
+        "npm:@types/react@^18.2.25",
+        "npm:@types/vscode-webview@^1.57.2",
+        "npm:@types/vscode@^1.81.0",
+        "npm:@typescript-eslint/eslint-plugin@^6.4.1",
+        "npm:@typescript-eslint/parser@^6.4.1",
+        "npm:@vscode/test-electron@^2.3.4",
+        "npm:classnames@^2.3.2",
+        "npm:esbuild-runner@^2.2.2",
+        "npm:esbuild@0.19.4",
+        "npm:eslint@^8.47.0",
+        "npm:glob@^10.3.3",
+        "npm:mocha@^10.2.0",
+        "npm:node-fetch@^2.7.0",
+        "npm:react-dom@^18.2.0",
+        "npm:react-transition-group@^4.4.5",
+        "npm:react@^18.2.0",
+        "npm:superjson@1.13.3",
+        "npm:typescript@^5.1.6"
       ]
     }
   }
