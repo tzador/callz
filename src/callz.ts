@@ -27,7 +27,7 @@ const functionOrError = <Error extends z.ZodRawShape, Receive, Reply>(
       const res = await fn(
         await requestSchema.parseAsync(req, { path: [":request"] }),
       );
-      return await requestSchema.parseAsync(res, { path: [":response"] });
+      return await replySchema.parseAsync(res, { path: [":response"] });
     }
     annotate(f, docSymbol, doc);
     annotate(f, requestSymbol, requestSchema);
@@ -78,11 +78,14 @@ function annotate(fn: any, symbol: symbol, value: any) {
 }
 
 const request = (doc?: string) => {
-  return <Receive>(
-    requestSchema: z.ZodType<Receive | undefined> = z.undefined(),
-  ) => ({
-    reply: <Reply>(replySchema: z.ZodType<Reply | undefined> = z.undefined()) =>
-      functionOrError(doc, requestSchema, replySchema, z.object({})),
+  return <Receive>(requestSchema: z.ZodType<Receive>) => ({
+    reply: <Reply>(replySchema?: z.ZodType<Reply>) =>
+      functionOrError(
+        doc,
+        requestSchema,
+        replySchema ?? z.undefined(),
+        z.object({}),
+      ),
     stream: <Reply>(
       eventSchema: z.ZodType<Reply | undefined> = z.undefined(),
     ) => generatorOrError(doc, requestSchema, eventSchema, z.object({})),
@@ -93,7 +96,8 @@ export default {
   doc: (doc: string) => ({ request: request(doc) }),
   request: request(),
 
-  server: async <M>(request: Request, service: M, method: string) => {
+  server: async <M>(request: Request, service: M) => {
+    const method = request.url.split("/").pop() ?? "";
     async function route(path: string[], service: any) {
       const handler = service[path[0]];
       if (typeof handler === "function") {
@@ -158,25 +162,30 @@ export default {
     return await route(method.split(":")[1].split("."), service);
   },
 
-  client: <Service>(endpoint: string) => {
+  client: <Service>(
+    endpoint: string,
+    myFetch: (request: Request) => Promise<Response> = fetch,
+  ) => {
     function proxyit(_target: any, prefix: string[]): any {
       return new Proxy(
         async (req: any) => {
           const url =
-            endpoint.replace(/\/$/, "") + "/callz." + prefix.join(".");
-          const request = await fetch(url, {
+            endpoint.replace(/\/$/, "") + "/callz:" + prefix.join(".");
+          const request = new Request(url, {
             method: "POST",
             body: JSON.stringify(req),
             headers: { "Content-Type": "application/json" },
           });
-          if (request.status === 418) {
-            const { code, message } = await request.json();
+          const response = await myFetch(request);
+
+          if (response.status === 418) {
+            const { code, message } = await response.json();
             new ErrorZ(code, message);
           }
 
-          if (request.headers.get("Content-Type") === "application/x-ndjson") {
+          if (response.headers.get("Content-Type") === "application/x-ndjson") {
             const g = async function* g() {
-              const reader = request.body?.getReader();
+              const reader = response.body?.getReader();
               if (!reader) return;
               let buffer = "";
               const decoder = new TextDecoder("utf-8");
@@ -196,7 +205,7 @@ export default {
             return g();
           }
 
-          return await request.json();
+          return await response.json();
         },
         {
           get: (_target, name) => {
