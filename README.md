@@ -1,3 +1,5 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown-dark.min.css" integrity="sha512-MmL2FuLmm/UH05Ah4JiJwA+G7OCceZDpzGHWqsju4Espzq+9nwQJdQVMNZPd1FNK2H3qDYXdET7HNG7Qm93FEg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
 # CallZ
 
 [https://github.com/tzador/callz](https://github.com/tzador/callz)
@@ -32,71 +34,79 @@ To install CallZ and its peer dependency [Zod](https://github.com/colinhacks/zod
 
 Create a service definition file, for example `service.ts`, where you define your RPC methods.
 
-    import { z } from "zod";
-    import callz from "callz";
+```typescript
+import { z } from "zod";
+import callz from "callz";
 
-    export const service = {
-      ping: callz
-        .doc("It pings")
-        .request(z.literal("ping"))
-        .reply(z.literal("pong"))
-        .function(() => "pong"),
-      clock: callz
-        .request(z.null())
-        .stream(z.union([z.literal("tick"), z.literal("tack")]))
-        .generator(async () => {
-          return (async function* () {
-            for (let i = 0; i < 100; i++) {
-              yield new Date().getMilliseconds();
-            }
-          })();
-        }),
-      fails: callz
-        .doc("It fails")
-        .request(z.null())
-        .reply(z.null())
-        .function(() => { throw callz.error("catastrophy", "Something bad happened") })
-    };
+export const service = {
+  ping: callz
+    .doc("It pings")
+    .request(z.literal("ping"))
+    .reply(z.literal("pong"))
+    .function(() => "pong"),
+  clock: callz
+    .request(z.null())
+    .stream(z.union([z.literal("tick"), z.literal("tack")]))
+    .generator(async () => {
+      return (async function* () {
+        for (let i = 0; i < 100; i++) {
+          yield new Date().getMilliseconds();
+        }
+      })();
+    }),
+  fails: callz
+    .doc("It fails")
+    .request(z.null())
+    .reply(z.null())
+    .function(() => {
+      throw callz.error("catastrophy", "Something bad happened");
+    }),
+};
+```
 
-    export type Service = typeof service;
+export type Service = typeof service;
 
 ### Set Up the Server
 
 Create a server file, for example `server.ts`, to set up the server and register your service.
 
-    import { serve } from "@hono/node-server";
-    import { Hono } from "hono";
-    import callz from "callz";
-    import { service } from "./service";
+```typescript
+import { serve } from "@hono/node-server";
+import { Hono } from "hono";
+import callz from "callz";
+import { service } from "./service";
 
-    const app = new Hono();
+const app = new Hono();
 
-    app.get("/callz", async (c) => {
-      return c.text("ok");
-    });
+app.get("/callz", async (c) => {
+  return c.text("ok");
+});
 
-    app.post("/callz/*", async (c) => {
-      return await callz.server(c.req.raw, service);
-    });
+app.post("/callz/*", async (c) => {
+  return await callz.server(c.req.raw, service);
+});
 
-    serve({ fetch: app.fetch, port: 9000 }, () => {
-      console.log("CallZ server ready on http://localhost:9000/callz");
-    });
+serve({ fetch: app.fetch, port: 9000 }, () => {
+  console.log("CallZ server ready on http://localhost:9000/callz");
+});
+```
 
 ### Create a Client
 
 Create a client file, for example `client.ts`, to interact with your service.
 
-    import callz from "callz";
-    import type { Service } from "./service";
+```typescript
+import callz from "callz";
+import type { Service } from "./service";
 
-    const client = callz.client<Service>("http://localhost:9000/callz");
+const client = callz.client<Service>("http://localhost:9000/callz");
 
-    const pong = await client.ping(); // pong === "pong"
+const pong = await client.ping(); // pong === "pong"
 
-    for await (const time of await client.clock()) {
-      console.log(time);
-    }
+for await (const time of await client.clock()) {
+  console.log(time);
+}
+```
 
 ## Contributing
 
@@ -105,5 +115,3 @@ Contributions are welcome! Please read the [contributing guidelines](https://git
 ## License
 
 CallZ is released under the MIT License. See the [LICENSE](https://github.com/tzador/callz/blob/main/LICENSE) file for more information.
-
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown-dark.min.css" integrity="sha512-MmL2FuLmm/UH05Ah4JiJwA+G7OCceZDpzGHWqsju4Espzq+9nwQJdQVMNZPd1FNK2H3qDYXdET7HNG7Qm93FEg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
