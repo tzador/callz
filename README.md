@@ -30,6 +30,7 @@ const service = {
     .function(() => throw callz.error("catastrophy", "Something bad happened))
 };
 
+export type Service = typeof service;
 
 // Example below is using Hono, but you can use any server you like:
 import { serve } from "@hono/node-server";
@@ -52,7 +53,7 @@ serve({ fetch: app.fetch, port: 9000 }, () => {
 
 ```typescript
 // client.ts
-import type { service } from ".../server.ts";
+import type { Service } from ".../server.ts";
 
 const client = callz.client<typeof service>("http://localhost:3000/callz");
 
