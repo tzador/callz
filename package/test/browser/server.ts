@@ -21,14 +21,15 @@ const service = {
 
   time: callz
     .request(z.string())
-    .stream(z.string())
-    .generator(async () => {
-      return (async function* () {
-        yield "1";
-        yield "2";
-        yield "3";
-      })();
-    }),
+    .stream(z.number())
+    .generator(async () =>
+      (async function* () {
+        for (let i = 0; i < 10000000000; i++) {
+          yield Date.now();
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+      })(),
+    ),
 };
 
 export type Service = typeof service;
@@ -46,5 +47,5 @@ app.post("/callz/*", async (c) => {
 });
 
 serve({ fetch: app.fetch, port: 9000 }, () => {
-  console.log("Hono server ready.");
+  console.log("Hono server ready");
 });

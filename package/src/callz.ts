@@ -33,7 +33,7 @@ const request = (description?: string) => {
     reply: <Reply extends Json>(replySchema: z.ZodType<Reply>) => {
       return {
         function: (fn: (request: Receive) => Promise<Reply>) => {
-          async function f(req: any) {
+          async function f(req: Receive) {
             const res = await fn(
               await requestSchema.parseAsync(req, { path: [":request"] }),
             );
@@ -50,7 +50,7 @@ const request = (description?: string) => {
 
     stream: <Event extends Json>(eventSchema: z.ZodType<Event>) => ({
       generator: (fn: (req: Receive) => Promise<AsyncGenerator<Event>>) => {
-        const p = async (req: any) => {
+        const p = async (req: Receive) => {
           async function* f() {
             const res = await fn(
               await requestSchema.parseAsync(req, {
@@ -92,9 +92,10 @@ export default {
             const readable = new ReadableStream({
               start(controller) {
                 (async () => {
-                  for await (const item of result) {
+                  for await (const event of result) {
+                    controller.enqueue(encoder.encode("event: event\n"));
                     controller.enqueue(
-                      encoder.encode(JSON.stringify(item) + "\n"),
+                      encoder.encode("data: " + JSON.stringify(event) + "\n\n"),
                     );
                   }
                   controller.close();
@@ -103,7 +104,11 @@ export default {
             });
 
             return new Response(readable, {
-              headers: { "Content-Type": "application/x-ndjson" },
+              headers: {
+                "X-Accel-Buffering": "no",
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache",
+              },
             });
           }
           return Response.json(result);
@@ -166,7 +171,7 @@ export default {
             new ErrorZ(code, message);
           }
 
-          if (response.headers.get("Content-Type") === "application/x-ndjson") {
+          if (response.headers.get("Content-Type") === "text/event-stream") {
             const g = async function* g() {
               const reader = response.body?.getReader();
               if (!reader) return;
@@ -181,7 +186,9 @@ export default {
                 const lines = buffer.split("\n");
                 buffer = lines.pop() ?? "";
                 for (const line of lines) {
-                  yield JSON.parse(line);
+                  if (line.startsWith("data: ")) {
+                    yield JSON.parse(line.slice(6));
+                  }
                 }
               }
             };
