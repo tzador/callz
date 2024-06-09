@@ -6,6 +6,9 @@ Awesome, Typesafe, Zod powered RPC, with streaming support.
 
 ```typescript
 // server.ts
+import { z } from "zod";
+import callz from "callz";
+
 const service = {
   ping: callz
     .doc("It pings")
@@ -28,11 +31,30 @@ const service = {
     .reply(z.null())
     .function(() => throw callz.error("catastrophy"))
 };
+
+
+// Example below is using Hono, but you can use any server you like:
+import { serve } from "@hono/node-server";
+import { Hono } from "hono";
+
+const app = new Hono();
+
+app.get("/callz", async (c) => {
+  return c.text("ok");
+});
+
+app.post("/callz/*", async (c) => {
+  return await callz.server(c.req.raw, service);
+});
+
+serve({ fetch: app.fetch, port: 9000 }, () => {
+  console.log("CallZ server ready on http://localhost:9000/callz");
+});
 ```
 
 ```typescript
 // client.ts
-import type { service } from "./server.ts";
+import type { service } from ".../server.ts";
 
 const client = callz.client<typeof service>("http://localhost:3000");
 
