@@ -1,0 +1,26 @@
+{
+  "name": "callz",
+  "description": "Awesome, Typesafe, Zod powered RPC, with streaming support.",
+  "version": "0.9.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev --port 8000",
+    "test": "vitest",
+    "test-browser": "",
+    "build": "mkdir -p pages && marked -i README.md -o pages/index.html tsc && vite build",
+    "format": "prettier --write ."
+  },
+  "types": "dist/callz.d.ts",
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^11.1.6",
+    "@types/node": "^20.14.2",
+    "marked": "^12.0.2",
+    "prettier": "^3.3.1",
+    "rollup-plugin-typescript-paths": "^1.5.0",
+    "tslib": "^2.6.3",
+    "typescript": "^5.2.2",
+    "vite": "^5.2.0",
+    "vite-node": "^1.6.0",
+    "vitest": "^1.6.0"
+  }
+}
