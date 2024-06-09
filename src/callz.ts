@@ -27,6 +27,7 @@ const functionOrError = <Error extends z.ZodRawShape, Receive, Reply>(
       const res = await fn(
         await requestSchema.parseAsync(req, { path: [":request"] }),
       );
+
       return await replySchema.parseAsync(res, { path: [":response"] });
     }
     annotate(f, docSymbol, doc);
@@ -42,7 +43,7 @@ const generatorOrError = <Error extends z.ZodRawShape, Receive, Stream>(
   streamSchema: z.ZodType<Stream>,
   errorSchema: z.ZodObject<Error>,
 ) => ({
-  error: <W>(code: string, message: z.ZodType<W | null> = z.null()) =>
+  error: <W>(code: string, message: z.ZodType<W>) =>
     generatorOrError(
       doc,
       requestSchema,
@@ -79,16 +80,15 @@ function annotate(fn: any, symbol: symbol, value: any) {
 
 const request = (doc?: string) => {
   return <Receive>(requestSchema: z.ZodType<Receive>) => ({
-    reply: <Reply>(replySchema?: z.ZodType<Reply>) =>
-      functionOrError(
+    reply: <Reply>(replySchema: z.ZodType<Reply>) =>
+      functionOrError(doc, requestSchema, replySchema, z.object({})),
+    stream: <Reply>(eventSchema: z.ZodType<Reply>) =>
+      generatorOrError(
         doc,
-        requestSchema,
-        replySchema ?? z.undefined(),
+        requestSchema ?? z.undefined(),
+        eventSchema,
         z.object({}),
       ),
-    stream: <Reply>(
-      eventSchema: z.ZodType<Reply | undefined> = z.undefined(),
-    ) => generatorOrError(doc, requestSchema, eventSchema, z.object({})),
   });
 };
 
