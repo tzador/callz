@@ -1,5 +1,3 @@
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sakura.css/css/sakura.css" type="text/css">
-
 # CallZ
 
 Awesome, Typesafe, Zod powered RPC, with streaming support.
@@ -29,7 +27,7 @@ const service = {
     .doc("It fails")
     .request(z.null())
     .reply(z.null())
-    .function(() => throw callz.error("catastrophy"))
+    .function(() => throw callz.error("catastrophy", "Something bad happened))
 };
 
 
@@ -56,7 +54,7 @@ serve({ fetch: app.fetch, port: 9000 }, () => {
 // client.ts
 import type { service } from ".../server.ts";
 
-const client = callz.client<typeof service>("http://localhost:3000");
+const client = callz.client<typeof service>("http://localhost:3000/callz");
 
 const pong = await client.ping(); // pong === "pong"
 
@@ -64,3 +62,5 @@ for await (const time of await client.clock()) {
   console.log(time);
 }
 ```
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown-dark.min.css" integrity="sha512-MmL2FuLmm/UH05Ah4JiJwA+G7OCceZDpzGHWqsju4Espzq+9nwQJdQVMNZPd1FNK2H3qDYXdET7HNG7Qm93FEg==" crossorigin="anonymous" referrerpolicy="no-referrer" />

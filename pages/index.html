@@ -1,8 +1,15 @@
+<hr>
+<h2>title: CallZ
+description: Awesome, Typesafe, Zod powered RPC, with streaming support.
+author: Tim Zadorozhny <a href="mailto:tzador@gmail.com">tzador@gmail.com</a></h2>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sakura.css/css/sakura.css" type="text/css">
 
 <h1>CallZ</h1>
 <p>Awesome, Typesafe, Zod powered RPC, with streaming support.</p>
 <pre><code class="language-typescript">// server.ts
+import { z } from &quot;zod&quot;;
+import callz from &quot;callz&quot;;
+
 const service = {
   ping: callz
     .doc(&quot;It pings&quot;)
@@ -23,13 +30,32 @@ const service = {
     .doc(&quot;It fails&quot;)
     .request(z.null())
     .reply(z.null())
-    .function(() =&gt; throw callz.error(&quot;catastrophy&quot;))
+    .function(() =&gt; throw callz.error(&quot;catastrophy&quot;, &quot;Something bad happened))
 };
+
+
+// Example below is using Hono, but you can use any server you like:
+import { serve } from &quot;@hono/node-server&quot;;
+import { Hono } from &quot;hono&quot;;
+
+const app = new Hono();
+
+app.get(&quot;/callz&quot;, async (c) =&gt; {
+  return c.text(&quot;ok&quot;);
+});
+
+app.post(&quot;/callz/*&quot;, async (c) =&gt; {
+  return await callz.server(c.req.raw, service);
+});
+
+serve({ fetch: app.fetch, port: 9000 }, () =&gt; {
+  console.log(&quot;CallZ server ready on http://localhost:9000/callz&quot;);
+});
 </code></pre>
 <pre><code class="language-typescript">// client.ts
-import type { service } from &quot;./server.ts&quot;;
+import type { service } from &quot;.../server.ts&quot;;
 
-const client = callz.client&lt;typeof service&gt;(&quot;http://localhost:3000&quot;);
+const client = callz.client&lt;typeof service&gt;(&quot;http://localhost:3000/callz&quot;);
 
 const pong = await client.ping(); // pong === &quot;pong&quot;
 

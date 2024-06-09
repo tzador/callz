@@ -7,7 +7,7 @@
     "dev": "concurrently 'vite dev --port 8000' 'vite-node test/browser/server.ts'",
     "test": "vitest",
     "test-browser": "",
-    "build": "mkdir -p pages && marked -i README.md -o pages/index.html tsc && vite build",
+    "build": "mkdir -p pages && marked --gfm -i README.md -o pages/index.html tsc && vite build",
     "format": "prettier --write ."
   },
   "types": "dist/callz.d.ts",
