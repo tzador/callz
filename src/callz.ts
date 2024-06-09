@@ -1,75 +1,25 @@
 import { z } from "zod";
 
+const jsonLiteralSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.null(),
+]);
+type JsonLiteral = z.infer<typeof jsonLiteralSchema>;
+type Json = JsonLiteral | { [key: string]: Json } | Json[];
+const jsonSchema: z.ZodType<Json> = z.lazy(() =>
+  z.union([jsonLiteralSchema, z.array(jsonSchema), z.record(jsonSchema)]),
+);
+
 export class ErrorZ extends Error {
-  constructor(
-    public code: string,
-    message: any,
-  ) {
+  constructor(name: string, message: string) {
     super(message);
+    this.name = name;
   }
 }
 
-const functionOrError = <Error extends z.ZodRawShape, Receive, Reply>(
-  doc: string | undefined,
-  requestSchema: z.ZodType<Receive>,
-  replySchema: z.ZodType<Reply>,
-  errorSchema: z.ZodObject<Error>,
-) => ({
-  error: <W>(code: string, message: z.ZodType<W | null> = z.null()) =>
-    functionOrError(
-      doc,
-      requestSchema,
-      replySchema,
-      errorSchema.extend({ [code]: message }),
-    ),
-  function: (fn: (req: Receive) => Reply) => {
-    async function f(req: any) {
-      const res = await fn(
-        await requestSchema.parseAsync(req, { path: [":request"] }),
-      );
-
-      return await replySchema.parseAsync(res, { path: [":response"] });
-    }
-    annotate(f, docSymbol, doc);
-    annotate(f, requestSymbol, requestSchema);
-    annotate(f, replySymbol, replySchema);
-    return f;
-  },
-});
-
-const generatorOrError = <Error extends z.ZodRawShape, Receive, Stream>(
-  doc: string | undefined,
-  requestSchema: z.ZodType<Receive>,
-  streamSchema: z.ZodType<Stream>,
-  errorSchema: z.ZodObject<Error>,
-) => ({
-  error: <W>(code: string, message: z.ZodType<W>) =>
-    generatorOrError(
-      doc,
-      requestSchema,
-      streamSchema,
-      errorSchema.extend({ [code]: message }),
-    ),
-  generator: (fn: (req: Receive) => Promise<AsyncGenerator<Stream>>) => {
-    const p = async (req: any) => {
-      async function* f() {
-        const res = await fn(
-          await requestSchema.parseAsync(req, { path: [":stream-request"] }),
-        );
-        for await (const item of res) {
-          yield await streamSchema.parseAsync(item, { path: [":stream-item"] });
-        }
-      }
-      return f();
-    };
-    annotate(p, docSymbol, doc);
-    annotate(p, requestSymbol, requestSchema);
-    annotate(p, streamSymbol, streamSchema);
-    return p;
-  },
-});
-
-const docSymbol = Symbol("doc");
+const describeSymbol = Symbol("doc");
 const requestSymbol = Symbol("request");
 const replySymbol = Symbol("reply");
 const streamSymbol = Symbol("stream");
@@ -78,22 +28,55 @@ function annotate(fn: any, symbol: symbol, value: any) {
   fn[symbol] = value;
 }
 
-const request = (doc?: string) => {
-  return <Receive>(requestSchema: z.ZodType<Receive>) => ({
-    reply: <Reply>(replySchema: z.ZodType<Reply>) =>
-      functionOrError(doc, requestSchema, replySchema, z.object({})),
-    stream: <Reply>(eventSchema: z.ZodType<Reply>) =>
-      generatorOrError(
-        doc,
-        requestSchema ?? z.undefined(),
-        eventSchema,
-        z.object({}),
-      ),
+const request = (description?: string) => {
+  return <Receive extends Json>(requestSchema: z.ZodType<Receive>) => ({
+    reply: <Reply extends Json>(replySchema: z.ZodType<Reply>) => {
+      return {
+        function: (fn: (request: Receive) => Promise<Reply>) => {
+          async function f(req: any) {
+            const res = await fn(
+              await requestSchema.parseAsync(req, { path: [":request"] }),
+            );
+
+            return await replySchema.parseAsync(res, { path: [":response"] });
+          }
+          annotate(f, describeSymbol, description);
+          annotate(f, requestSymbol, requestSchema);
+          annotate(f, replySymbol, replySchema);
+          return f;
+        },
+      };
+    },
+
+    stream: <Event extends Json>(eventSchema: z.ZodType<Event>) => ({
+      generator: (fn: (req: Receive) => Promise<AsyncGenerator<Event>>) => {
+        const p = async (req: any) => {
+          async function* f() {
+            const res = await fn(
+              await requestSchema.parseAsync(req, {
+                path: [":stream-request"],
+              }),
+            );
+            for await (const item of res) {
+              yield await eventSchema.parseAsync(item, {
+                path: [":stream-item"],
+              });
+            }
+          }
+          return f();
+        };
+        annotate(p, describeSymbol, description);
+        annotate(p, requestSymbol, requestSchema);
+        annotate(p, streamSymbol, eventSchema);
+        return p;
+      },
+    }),
   });
 };
 
 export default {
-  doc: (doc: string) => ({ request: request(doc) }),
+  describe: (description: string) => ({ request: request(description) }),
+
   request: request(),
 
   server: async <M>(request: Request, service: M) => {
@@ -166,7 +149,7 @@ export default {
     endpoint: string,
     myFetch: (request: Request) => Promise<Response> = fetch,
   ) => {
-    function proxyit(_target: any, prefix: string[]): any {
+    function proxy(_target: any, prefix: string[]): any {
       return new Proxy(
         async (req: any) => {
           const url =
@@ -210,7 +193,7 @@ export default {
         {
           get: (_target, name) => {
             if (typeof name === "string") {
-              return proxyit(_target, [...prefix, name]);
+              return proxy(_target, [...prefix, name]);
             } else {
               new Error("Invalid service name type, string expected");
             }
@@ -219,6 +202,8 @@ export default {
       ) as any;
     }
 
-    return proxyit({}, []) as Service;
+    return proxy({}, []) as Service;
   },
+
+  error: (name: string, message: any) => new ErrorZ(name, message),
 };

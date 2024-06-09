@@ -1,9 +1,11 @@
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sakura.css/css/sakura.css" type="text/css">
+
 # CallZ
 
 Awesome, Typesafe, Zod powered RPC, with streaming support.
 
 ```typescript
-// Service implementation
+// server.ts
 const service = {
   ping: callz
     .doc("It pings")
@@ -20,11 +22,18 @@ const service = {
         }
       })();
     }),
+  fails: callz
+    .doc("It fails")
+    .request(z.null())
+    .reply(z.null())
+    .function(() => throw callz.error("catastrophy"))
 };
 ```
 
 ```typescript
-// Service usage
+// client.ts
+import type { service } from "./server.ts";
+
 const client = callz.client<typeof service>("http://localhost:3000");
 
 const pong = await client.ping(); // pong === "pong"

@@ -1,2 +1,39 @@
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sakura.css/css/sakura.css" type="text/css">
+
 <h1>CallZ</h1>
 <p>Awesome, Typesafe, Zod powered RPC, with streaming support.</p>
+<pre><code class="language-typescript">// server.ts
+const service = {
+  ping: callz
+    .doc(&quot;It pings&quot;)
+    .request(z.literal(&quot;ping&quot;))
+    .reply(z.literal(&quot;pong&quot;))
+    .function(() =&gt; &quot;pong&quot;),
+  clock: callz
+    .request(z.null())
+    .stream(z.union([z.literal(&quot;tick&quot;), z.literal(&quot;tack&quot;)]))
+    .generator(async () =&gt; {
+      return (async function* () {
+        for (let i = 0; i &lt; 100; i++) {
+          yield new Date().getMilliseconds();
+        }
+      })();
+    }),
+  fails: callz
+    .doc(&quot;It fails&quot;)
+    .request(z.null())
+    .reply(z.null())
+    .function(() =&gt; throw callz.error(&quot;catastrophy&quot;))
+};
+</code></pre>
+<pre><code class="language-typescript">// client.ts
+import type { service } from &quot;./server.ts&quot;;
+
+const client = callz.client&lt;typeof service&gt;(&quot;http://localhost:3000&quot;);
+
+const pong = await client.ping(); // pong === &quot;pong&quot;
+
+for await (const time of await client.clock()) {
+  console.log(time);
+}
+</code></pre>

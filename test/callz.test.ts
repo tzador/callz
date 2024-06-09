@@ -4,19 +4,20 @@ import { z } from "zod";
 
 const service = {
   flipflop: callz
+    .describe("Flip Flop")
     .request(z.object({ one: z.number(), two: z.number() }))
     .reply(z.object({ one: z.number(), two: z.number() }))
-    .function(({ one, two }) => ({ one: two, two: one })),
+    .function(async ({ one, two }) => ({ one: two, two: one })),
 
   play: callz
     .request(z.literal("ping"))
     .reply(z.literal("pong"))
-    .function(() => "pong"),
+    .function(async () => "pong"),
 
   requestEmpty: callz
-    .request(z.undefined())
+    .request(z.null())
     .reply(z.object({}))
-    .function(() => ({})),
+    .function(async () => ({})),
 
   ticktack: callz
     .request(z.null())
@@ -28,6 +29,13 @@ const service = {
           await new Promise((r) => setTimeout(r, 1000));
         }
       })();
+    }),
+
+  someErrors: callz
+    .request(z.number())
+    .reply(z.number())
+    .function(async (n) => {
+      return n;
     }),
 };
 
