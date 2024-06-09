@@ -24,7 +24,7 @@ const service = {
     .stream(z.number())
     .generator(async () =>
       (async function* () {
-        for (let i = 0; i < 10000000000; i++) {
+        for (let i = 0; i < 100; i++) {
           yield Date.now();
           await new Promise((r) => setTimeout(r, 1000));
         }

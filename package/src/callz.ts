@@ -19,7 +19,7 @@ export class ErrorZ extends Error {
   }
 }
 
-const describeSymbol = Symbol("doc");
+const describeSymbol = Symbol("describe");
 const requestSymbol = Symbol("request");
 const replySymbol = Symbol("reply");
 const streamSymbol = Symbol("stream");
