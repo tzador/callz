@@ -1,16 +1,27 @@
-<hr>
-<h2>title: CallZ
-description: Awesome, Typesafe, Zod powered RPC, with streaming support.
-author: Tim Zadorozhny <a href="mailto:tzador@gmail.com">tzador@gmail.com</a></h2>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sakura.css/css/sakura.css" type="text/css">
-
 <h1>CallZ</h1>
-<p>Awesome, Typesafe, Zod powered RPC, with streaming support.</p>
-<pre><code class="language-typescript">// server.ts
-import { z } from &quot;zod&quot;;
+<p><a href="https://github.com/tzador/callz">https://github.com/tzador/callz</a></p>
+<p><strong>Awesome</strong>, <strong>TypeScript</strong> safe, <strong>Zod</strong> powered RPC, with <strong>streaming</strong> support.</p>
+<h2>Overview</h2>
+<p>CallZ is a powerful library for building typesafe, Zod validated Remote Procedure Calls (RPC) with built-in streaming support. It simplifies the process of defining and consuming RPC services, ensuring type safety and validation at every step.</p>
+<h2>Features</h2>
+<ul>
+<li><strong>Typesafe RPC:</strong> Fully leverage TypeScript to ensure your RPC calls are typesafe.</li>
+<li><strong>Zod Validation:</strong> Use Zod schemas to validate requests and responses, providing robust data validation.</li>
+<li><strong>Streaming Support:</strong> Built-in support for streaming responses, allowing you to handle real-time data efficiently.</li>
+<li><strong>Easy Documentation:</strong> Add documentation to your RPC functions for better clarity and maintainability.</li>
+<li><strong>Framework Agnostic:</strong> Compatible with any server framework. The example uses Hono, but you can use Express, Koa, or any other framework.</li>
+</ul>
+<h2>Installation</h2>
+<p>To install CallZ and its peer dependency Zod, run:</p>
+<pre><code>npm install callz zod
+</code></pre>
+<h2>Usage</h2>
+<h3>Define Your Service</h3>
+<p>Create a service definition file, for example <code>service.ts</code>, where you define your RPC methods.</p>
+<pre><code>import { z } from &quot;zod&quot;;
 import callz from &quot;callz&quot;;
 
-const service = {
+export const service = {
   ping: callz
     .doc(&quot;It pings&quot;)
     .request(z.literal(&quot;ping&quot;))
@@ -30,13 +41,17 @@ const service = {
     .doc(&quot;It fails&quot;)
     .request(z.null())
     .reply(z.null())
-    .function(() =&gt; throw callz.error(&quot;catastrophy&quot;, &quot;Something bad happened))
+    .function(() =&gt; { throw callz.error(&quot;catastrophy&quot;, &quot;Something bad happened&quot;) })
 };
 
-
-// Example below is using Hono, but you can use any server you like:
-import { serve } from &quot;@hono/node-server&quot;;
+export type Service = typeof service;
+</code></pre>
+<h3>Set Up the Server</h3>
+<p>Create a server file, for example <code>server.ts</code>, to set up the server and register your service.</p>
+<pre><code>import { serve } from &quot;@hono/node-server&quot;;
 import { Hono } from &quot;hono&quot;;
+import callz from &quot;callz&quot;;
+import { service } from &quot;./service&quot;;
 
 const app = new Hono();
 
@@ -52,10 +67,12 @@ serve({ fetch: app.fetch, port: 9000 }, () =&gt; {
   console.log(&quot;CallZ server ready on http://localhost:9000/callz&quot;);
 });
 </code></pre>
-<pre><code class="language-typescript">// client.ts
-import type { service } from &quot;.../server.ts&quot;;
+<h3>Create a Client</h3>
+<p>Create a client file, for example <code>client.ts</code>, to interact with your service.</p>
+<pre><code>import callz from &quot;callz&quot;;
+import type { Service } from &quot;./service&quot;;
 
-const client = callz.client&lt;typeof service&gt;(&quot;http://localhost:3000/callz&quot;);
+const client = callz.client&lt;Service&gt;(&quot;http://localhost:9000/callz&quot;);
 
 const pong = await client.ping(); // pong === &quot;pong&quot;
 
@@ -63,3 +80,8 @@ for await (const time of await client.clock()) {
   console.log(time);
 }
 </code></pre>
+<h2>Contributing</h2>
+<p>Contributions are welcome! Please read the <a href="https://github.com/tzador/callz/blob/main/CONTRIBUTING.md">contributing guidelines</a> for more information.</p>
+<h2>License</h2>
+<p>CallZ is released under the MIT License. See the <a href="https://github.com/tzador/callz/blob/main/LICENSE">LICENSE</a> file for more information.</p>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown-dark.min.css" integrity="sha512-MmL2FuLmm/UH05Ah4JiJwA+G7OCceZDpzGHWqsju4Espzq+9nwQJdQVMNZPd1FNK2H3qDYXdET7HNG7Qm93FEg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
