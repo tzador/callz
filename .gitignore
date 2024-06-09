@@ -9,9 +9,7 @@
 *.sln
 *.suo
 *.sw?
-/pages
-# Editor directories and files
-# Logs
+pages
 dist
 dist-ssr
 lerna-debug.log*

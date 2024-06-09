@@ -2,7 +2,7 @@
 
 [https://github.com/tzador/callz](https://github.com/tzador/callz)
 
-**Awesome**, **TypeScript** safe, **Zod** powered RPC, with **streaming** support.
+Awesome, **TypeScript** safe, **Zod** powered **RPC**, with **Streaming** support.
 
 ## Overview
 
@@ -18,9 +18,13 @@ CallZ is a powerful library for building typesafe, Zod validated Remote Procedur
 
 ## Installation
 
-To install CallZ and its peer dependency Zod, run:
+To install CallZ and its peer dependency [Zod](https://github.com/colinhacks/zod), run:
 
     npm install callz zod
+
+    pnpm install callz zod
+
+    yarn add callz zod
 
 ## Usage
 
