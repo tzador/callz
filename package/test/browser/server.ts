@@ -1,36 +1,15 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { z } from "zod";
-import callz from "../../src/callz";
+import { z } from "../../src/index";
 
-const service = {
-  ping: callz
-    .describe("It pings")
-    .request(z.literal("ping"))
-    .reply(z.literal("pong"))
-    .function(async () => "pong"),
-
-  account: {
-    new: callz
-      .describe("It pings")
-      .request(z.literal("ping"))
-      .reply(z.literal("pong"))
-      .function(async () => "pong"),
-  },
-
-  time: callz
-    .request(z.string())
-    .stream(z.number())
-    .generator(async () =>
-      (async function* () {
-        for (let i = 0; i < 100; i++) {
-          yield Date.now();
-          await new Promise((r) => setTimeout(r, 1000));
-        }
-      })(),
-    ),
-};
+const service = z.service({
+  ping: z
+    .sync("")
+    .args(z.literal("ping"))
+    .returns(z.literal("pong"))
+    .implement(() => "pong"),
+});
 
 export type Service = typeof service;
 

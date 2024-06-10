@@ -1,6 +1,6 @@
 {
   "name": "callz",
-  "description": "Awesome, Typesafe, Zod powered RPC, with streaming support.",
+  "description": "Awesome, Typesafe, Zod powered RPC APIs, with Streaming support.",
   "version": "0.9.0",
   "type": "module",
   "scripts": {

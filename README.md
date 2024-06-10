@@ -4,7 +4,7 @@
 
 [https://github.com/tzador/callz](https://github.com/tzador/callz)
 
-Awesome, **TypeScript** safe, **Zod** powered **RPC**, with **Streaming** support.
+Awesome, **TypeScript** safe, **Zod** powered **RPC** **APIs**, with **Streaming** support.
 
 ## Overview
 
@@ -46,8 +46,8 @@ export const service = {
     .function(() => "pong"),
   clock: callz
     .request(z.null())
-    .stream(z.union([z.literal("tick"), z.literal("tack")]))
-    .generator(async () => {
+    .event(z.union([z.literal("tick"), z.literal("tack")]))
+    .generator(async (_, ok) => {
       return (async function* () {
         for (let i = 0; i < 100; i++) {
           yield new Date().getMilliseconds();
@@ -60,7 +60,7 @@ export const service = {
     .reply(z.null())
     .function(() => {
       throw callz.error("catastrophy", "Something bad happened");
-    }),
+    })
 };
 ```
 
@@ -115,3 +115,41 @@ Contributions are welcome! Please read the [contributing guidelines](https://git
 ## License
 
 CallZ is released under the MIT License. See the [LICENSE](https://github.com/tzador/callz/blob/main/LICENSE) file for more information.
+
+```typescript
+export const service = {
+  amethod: callz.method({
+    doc: "Even are good, odd are bad",
+    request: z.number(),
+    result: z.string(),
+    errors: [{ status: "not_found" }],
+    method: async (request) => {
+      return reply.ok();
+      return reply.error.even("");
+    }
+  }),
+  amethod: callz.stream({
+    doc: "Even are good, odd are bad",
+    request: z.number(),
+    events: [{ event: "tick", data: z.number() }],
+    errors: [{ status: "not_found" }],
+    stream: async (request) => {
+      return {
+        status: "ok",
+        result: async (emit) => {
+          emit.tick(1);
+          emit.tick(2);
+          emit.tick(3);
+        }
+      };
+    }
+  })
+};
+
+const response = client.an_endpoint(1);
+if (response.status === "ok") {
+  console.log("ok");
+} else {
+  console.log(response.error);
+}
+```
